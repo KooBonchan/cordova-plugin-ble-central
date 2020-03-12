@@ -59,6 +59,7 @@ public class Peripheral extends BluetoothGattCallback {
     private CallbackContext refreshCallback;
     private CallbackContext readCallback;
     private CallbackContext writeCallback;
+    private CallbackContext requestMtuCallback;
     private Activity currentActivity;
 
     private Map<String, SequentialCallbackContext> notificationCallbacks = new HashMap<String, SequentialCallbackContext>();
@@ -167,14 +168,24 @@ public class Peripheral extends BluetoothGattCallback {
     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
         LOG.d(TAG, "mtu=%d, status=%d", mtu, status);
         super.onMtuChanged(gatt, mtu, status);
+        if (status == BluetoothGatt.GATT_SUCCESS) {
+            requestMtuCallback.success(mtu);
+        } else {
+            requestMtuCallback.error("MTU request failed");
+        }
+        requestMtuCallback = null;
     }
 
-    public void requestMtu(int mtuValue) {
-        if (gatt != null) {
-            LOG.d(TAG, "requestMtu mtu=%d", mtuValue);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                gatt.requestMtu(mtuValue);
-            }
+    public void requestMtu(CallbackContext callbackContext, int mtuValue) {
+        LOG.d(TAG, "requestMtu mtu=%d", mtuValue);
+        if (gatt == null) {
+            callbackContext.error("No GATT");
+            return;
+        }
+        if (gatt.requestMtu(mtuValue)) {
+            requestMtuCallback = callbackContext;
+        } else {
+            callbackContext.error("Could not initiate MTU request");
         }
     }
 
